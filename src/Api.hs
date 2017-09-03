@@ -9,11 +9,15 @@ import Types
 import Data.Aeson
 import Data.ByteString (ByteString ())
 import Data.Text (Text ())
+import Data.Time.Calendar (Day) -- TODO switch to utc
+import Data.Time.LocalTime (TimeOfDay)
+import Data.Proxy
 import Servant.API
 
 data Entry'
   = Entry'
   { entryReplyTo' :: Maybe Id
+  , entryTime'    :: (Day, TimeOfDay)
   , entryImg'     :: Maybe Id
   , entryText'    :: Markup Text
   } deriving (Show, Eq, Ord)
@@ -21,6 +25,7 @@ data Entry'
 data Entry
   = Entry
   { entryId         :: Id
+  , entryTime       :: (Day, TimeOfDay)
   , entryReplyTo    :: Maybe Id
   , entryImg        :: Maybe Id
   , entryText       :: Markup Text
@@ -30,12 +35,14 @@ data Entry
 instance FromJSON Entry' where
   parseJSON = withObject "Entry'" $ \v ->
     Entry' <$> v .: "reply_to"
+           <*> v .: "time"
            <*> v .: "img"
            <*> (parseMarkup <$> v .: "text")
 
 instance ToJSON Entry where
-  toJSON (Entry id replyTo img text _) = object
+  toJSON (Entry id time replyTo img text _) = object
     [ "id" .= id
+    , "time" .= time
     , "reply_to" .= replyTo
     , "img" .= img
     , "text" .= toText text
@@ -95,6 +102,9 @@ instance ToJSON Report where
     , "text" .= text
     ]
 
+api :: Proxy CCChanRoutes
+api = Proxy
+
 type CCChanRoutes = "api" :> CCChanApi :<|> Raw
 
 type CCChanApi = "v1" :> CCChanApi1
@@ -108,7 +118,7 @@ type ModerationApi = "reports" :> Get '[JSON] [Report]
   :<|> "boards" :> Capture "name" Name :> ReqBody '[JSON] BoardInfo :> Put '[JSON] Name
   :<|> "boards" :> Capture "name" Name :> DeleteNoContent '[JSON] NoContent
 
-type BoardApi1 = "entries" :> Get '[JSON] [Entry]
+type BoardApi1 = "entries" :> QueryParam "entries_per_page" Int :> QueryParam "page" Int :>  Get '[JSON] [Entry]
   :<|> "entries" :> ReqBody '[JSON] Entry' :> Post '[JSON] IdAndDeleteCode
   :<|> "entries" :> Capture "id" Id :> Get '[JSON] Entry
   :<|> "entries" :> Capture "id" Id :> ReqBody '[JSON] DeleteCode :> DeleteNoContent '[JSON] NoContent
