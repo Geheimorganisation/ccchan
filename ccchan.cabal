@@ -1,0 +1,28 @@
+name:                ccchan
+version:             0.1.0.0
+synopsis:            Chaos Computer Chan, the CCC's official image board
+-- description:         
+homepage:            https://chan.chaoscomputer.club
+license:             AGPL-3
+license-file:        LICENSE
+author:              Geheimorganisation
+maintainer:          bnd@geheimorganisation.de
+-- copyright:           
+category:            Web
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+
+executable ccchan
+  main-is:             Main.hs
+  -- other-modules:       
+  -- other-extensions:    
+  build-depends:       base >=4.9 && <4.10
+                     , bytestring >=0.10 && <0.11
+                     , text
+                     , aeson
+                     , servant-server
+                     , servant-auth
+                     , servant
+  hs-source-dirs:      src
+  default-language:    Haskell2010
