@@ -6,43 +6,50 @@ module Api where
 import Markup
 import Types
 
+import Prelude hiding (fail)
+import Control.Monad.Fail
 import Data.Aeson
 import Data.ByteString (ByteString ())
+import Data.Maybe
 import Data.Text (Text ())
-import Data.Time.Calendar (Day) -- TODO switch to utc
-import Data.Time.LocalTime (TimeOfDay)
 import Data.Proxy
+import Data.UTC
 import Servant.API
 
 data Entry'
   = Entry'
   { entryReplyTo' :: Maybe Id
-  , entryTime'    :: (Day, TimeOfDay)
+  , entryTime'    :: Local DateTime
   , entryImg'     :: Maybe Id
   , entryText'    :: Markup Text
-  } deriving (Show, Eq, Ord)
+  } deriving (Eq, Ord)
 
 data Entry
   = Entry
   { entryId         :: Id
-  , entryTime       :: (Day, TimeOfDay)
+  , entryTime       :: Local DateTime
   , entryReplyTo    :: Maybe Id
   , entryImg        :: Maybe Id
   , entryText       :: Markup Text
   , entryDeleteCode :: Maybe DeleteCode
-  } deriving (Show, Eq, Ord)
+  } deriving (Eq, Ord)
+
+failOnNothing :: MonadFail m => Maybe a -> m a
+failOnNothing Nothing = fail "Nothing"
+failOnNothing (Just a) = pure a
 
 instance FromJSON Entry' where
   parseJSON = withObject "Entry'" $ \v ->
     Entry' <$> v .: "reply_to"
-           <*> v .: "time"
+           <*> (((parseRfc3339 :: Text -> Maybe (Local DateTime))
+                  <$> v .: "time") >>= failOnNothing)
            <*> v .: "img"
            <*> (parseMarkup <$> v .: "text")
 
 instance ToJSON Entry where
   toJSON (Entry id time replyTo img text _) = object
     [ "id" .= id
-    , "time" .= time
+    , "time" .= fromJust (renderRfc3339 time :: Maybe Text)
     , "reply_to" .= replyTo
     , "img" .= img
     , "text" .= toText text
